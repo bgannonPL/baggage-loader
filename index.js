@@ -1,5 +1,7 @@
 'use strict';
 
+// @todo make dynamic require syntax ( require('#./[foobar]') ) configureable instead of hardcoded
+
 var path = require('path');
 var fs = require('fs');
 var loaderUtils = require('loader-utils');
@@ -38,20 +40,12 @@ module.exports = function(source, sourceMap) {
                     baggageVar = util.applyPlaceholders(baggageVar, srcDirname, srcFilename);
                 }
 
-                try {
-                    // check if absoluted from srcDirpath + baggageFile path exists
-                    var stats = fs.statSync(path.resolve(srcDirpath, baggageFile));
+                if (baggageVar.length) {
+                    inject += 'var ' + baggageVar + ' = ';
+                }
 
-                    if (stats.isFile()) {
-                        // assign it to variable
-                        if (baggageVar.length) {
-                            inject += 'var ' + baggageVar + ' = ';
-                        }
-
-                        // and require
-                        inject += 'require(\'./' + baggageFile + '\');\n';
-                    }
-                } catch (e) {}
+                // and require
+                inject += 'require(\'#./' + baggageFile + '\');\n';
             }
         });
 

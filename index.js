@@ -1,6 +1,5 @@
 'use strict';
 
-// @todo make dynamic require syntax ( require('#./[foobar]') ) configureable instead of hardcoded
 // to make a require optional, prefix the variable in the baggage loader with (or set it to) '[flag]#',
 // where [flag] is a term to search for in the file. If the file contains @[flag], no require will be 
 // inserted 
@@ -12,6 +11,7 @@ var SourceMap = require('source-map');
 var util = require('./lib/util');
 var optionalFlag = '#';
 var ignoreFlagFormat = '@[flag]';
+var reqPrefix = null; // optional param to support custom require syntaxes
 
 module.exports = function(source, sourceMap) {
     var query = loaderUtils.parseQuery(this.query);
@@ -32,8 +32,15 @@ module.exports = function(source, sourceMap) {
     if (Object.keys(query).length) {
         var inject = '\n/* injects from baggage-loader */\n';
 
+        if (query.reqPrefix) {
+            reqPrefix = query.reqPrefix;
+            delete query.reqPrefix;
+        }
+
         Object.keys(query).forEach(function(baggageFile) {
-            var baggageVar = query[baggageFile], ignoreFlag = null, ignoreArr;
+            var baggageVar = query[baggageFile], ignoreFlag = null, ignoreArr, prefix;
+
+            prefix = reqPrefix || '';
 
             // TODO: not so quick and dirty validation
             if (typeof baggageVar === 'string' || baggageVar === true) {
@@ -61,7 +68,7 @@ module.exports = function(source, sourceMap) {
                     }
 
                     // and require
-                    inject += 'require(\'#./' + baggageFile + '\');\n';
+                    inject += 'require(\'' + prefix + baggageFile + '\');\n';
                 }
                 
             }

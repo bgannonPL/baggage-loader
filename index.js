@@ -10,7 +10,8 @@ var loaderUtils = require('loader-utils');
 var SourceMap = require('source-map');
 var util = require('./lib/util');
 var optionalFlag = '#';
-var ignoreFlagFormat = '@[flag]';
+var optionalAddFlag = '*';
+var optionalFlagFormat = '@[flag]';
 var reqPrefix = null; // optional param to support custom require syntaxes
 
 module.exports = function(source, sourceMap) {
@@ -38,7 +39,7 @@ module.exports = function(source, sourceMap) {
         }
 
         Object.keys(query).forEach(function(baggageFile) {
-            var baggageVar = query[baggageFile], ignoreFlag = null, ignoreArr, prefix;
+            var baggageVar = query[baggageFile], ignoreFlag = null, ignoreArr, addFlag = null, addArr, prefix;
 
             prefix = reqPrefix || '';
 
@@ -47,8 +48,10 @@ module.exports = function(source, sourceMap) {
                 // apply filename placeholders
                 baggageFile = util.applyPlaceholders(baggageFile, srcDirname, srcFilename);
 
-                // check for flag indicating this inclusion is optional
-                if (baggageVar.length && baggageVar.indexOf(optionalFlag) !== -1) {
+                // check for flags indicating this inclusion is optional
+                if (baggageVar.length) {
+                  // optional variable that can be ignored
+                  if (baggageVar.indexOf(optionalFlag) !== -1) {
                     ignoreArr = baggageVar.split(optionalFlag);
                     // term before the optional flag is the term that indicates, when present in a file, 
                     // that the require should be ignored for that file
@@ -56,16 +59,36 @@ module.exports = function(source, sourceMap) {
                         ignoreFlag = ignoreArr[0];
                     }
                     baggageVar = ignoreArr[1];
+                  }
+                  
+                  // optional variable that can be added if requested
+                  if (baggageVar.indexOf(optionalAddFlag) !== -1) {
+                    addArr = baggageVar.split(optionalAddFlag);
+                    if (addArr[0]) {
+                      addFlag = addArr[0];
+                    }
+                    baggageVar = addArr[1];
+                  }
+                }
+                
+                // Check wether or not we should add the require, based on optional params
+                var includeRequire = true;
+                if (addArr) {
+                  // optional 'add' case, only add if found in file, else ignore
+                  if (addFlag && source.indexOf( optionalFlagFormat.replace('[flag]', addFlag)) === -1) {
+                    includeRequire = false;
+                  }
+                } else if ( ignoreFlag && source.indexOf( optionalFlagFormat.replace( '[flag]', ignoreFlag ) ) !== -1 ) {
+                  // no op, the ignore flag tells us not to include the require here
+                  includeRequire = false;
                 }
 
-                if ( ignoreFlag && source.indexOf( ignoreFlagFormat.replace( '[flag]', ignoreFlag ) ) !== -1 ) {
-                    // no op, the ignore flag tells us not to include the require here
-                } else {
-                    // apply filename placeholders
-                    if (baggageVar.length) {
-                        baggageVar = util.applyPlaceholders(baggageVar, srcDirname, srcFilename);
-                        inject += 'var ' + baggageVar + ' = ';
-                    }
+                if (includeRequire) {
+                  // apply filename placeholders
+                  if (baggageVar.length) {
+                    baggageVar = util.applyPlaceholders(baggageVar, srcDirname, srcFilename);
+                    inject += 'var ' + baggageVar + ' = ';
+                  }
 
                     // and require
                     inject += 'require(\'' + prefix + baggageFile + '\');\n';

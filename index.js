@@ -73,11 +73,9 @@ module.exports = function(source, sourceMap) {
                 
                 // Check wether or not we should add the require, based on optional params
                 var includeRequire = true;
-                if (addArr) {
-                  // optional 'add' case, only add if found in file, else ignore
-                  if (addFlag && source.indexOf( optionalFlagFormat.replace('[flag]', addFlag)) === -1) {
-                    includeRequire = false;
-                  }
+                if ( addFlag && source.indexOf( optionalFlagFormat.replace('[flag]', addFlag) ) === -1 ) {
+                  // optional 'add' case, only add if flag is found in file, else noop
+                  includeRequire = false;
                 } else if ( ignoreFlag && source.indexOf( optionalFlagFormat.replace( '[flag]', ignoreFlag ) ) !== -1 ) {
                   // no op, the ignore flag tells us not to include the require here
                   includeRequire = false;
